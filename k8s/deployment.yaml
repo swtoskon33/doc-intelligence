@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: doc-intelligence
+  labels:
+    app: doc-intelligence
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: doc-intelligence
+  template:
+    metadata:
+      labels:
+        app: doc-intelligence
+    spec:
+      containers:
+        - name: doc-intelligence
+          image: doc-intelligence:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: EXTRACTION_BACKEND
+              value: "rule"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 5
