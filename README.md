@@ -8,9 +8,10 @@ The extraction backend is pluggable via `EXTRACTION_BACKEND`: `rule` (determinis
 offline, CI default) or `llm` (OpenAI / Azure OpenAI, production). OCR plugs into the
 ingest layer (e.g. Azure Document Intelligence).
 
-Document -> Ingest -> Extract -> Confidence check -> Structured fields
-type fields + needs_review + review flag
-inference confidence
+```
+Document  ->  Ingest  ->  Extract  ->  Validate  ->  Review?  ->  Structured output
+(text/OCR)    classify    fields+conf   rules        HITL         validated fields
+```
 
 
 ## Features
