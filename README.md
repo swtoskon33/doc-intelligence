@@ -1,28 +1,40 @@
 # doc-intelligence
 
-Intelligent Document Processing service. Extracts structured fields from unstructured
-documents (invoices, receipts, contracts) and returns them with confidence scores.
-Includes evaluation, a FastAPI service, and Kubernetes manifests.
+[![CI](https://github.com/swtoskon33/doc-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/swtoskon33/doc-intelligence/actions/workflows/ci.yml)
 
-The extraction backend is pluggable via `EXTRACTION_BACKEND`: `rule` (deterministic,
-offline, CI default) or `llm` (OpenAI / Azure OpenAI, production). OCR plugs into the
-ingest layer (e.g. Azure Document Intelligence).
+Intelligent Document Processing service. Classifies documents, splits multi-document
+batches, extracts structured fields, validates them against business rules, and flags
+low-confidence or invalid results for human review. Built offline-first: the rule-based
+backend runs in CI with no API keys; an LLM backend (OpenAI / Azure OpenAI) is the
+production path behind the same interface.
 
-```
-Document  ->  Ingest  ->  Extract  ->  Validate  ->  Review?  ->  Structured output
-(text/OCR)    classify    fields+conf   rules        HITL         validated fields
-```
+Batch -> Split -> Classify -> Extract -> Validate -> Review? -> Output
+(pages) Docsplit doc type schema-driven business rules HITL structured
++ confidence IBAN, MWST + is_valid
 
 
 ## Features
 
-- Document type inference (invoice / receipt / contract) from text signals.
-- Schema-based field extraction per document type, each field with a confidence score.
-- Low-confidence fields flag the document for review (`needs_review`).
-- Per-field precision / recall / F1 evaluation against ground truth.
-- FastAPI service: `POST /extract`, `GET /health`.
-- Docker image and Kubernetes manifests (deployment, service, HPA) with liveness and
-  readiness probes on `/health`.
+- **Splitting** (Docsplit-style): break a multi-document page batch into individual
+  documents with page ranges and inferred type.
+- **Classification**: infer document type (invoice / receipt / contract) from the text.
+- **Schema-driven extraction**: field definitions live in YAML (`schemas/`), consumed by
+  both the rule and LLM backends. Swiss-relevant invoice fields: `iban`, `mwst_amount`,
+  `mwst_rate`, `currency`, alongside `invoice_number`, `total_amount`, dates.
+- **Validation**: required fields per type, date formats, IBAN mod-97 checksum, and Swiss
+  VAT (MWST) consistency. Produces `validation_errors` and an `is_valid` flag.
+- **Human-in-the-loop**: `needs_review` triggers on low confidence OR any validation
+  failure, with `review_reasons` naming exactly what caused it.
+- **Evaluation**: per-field precision / recall / F1 plus document-level metrics, written
+  to a committed report (`docs/eval_report.md`).
+- **Serving & deploy**: FastAPI (`POST /extract`, `GET /health`), Docker image, and
+  Kubernetes manifests (deployment, service, HPA) with liveness/readiness probes.
+
+## How it maps to IDP
+
+Classification, splitting, extraction, validation, and review are the core stages of a
+document-processing back office in regulated industries (accounting, insurance, banking).
+This repo implements each stage as a testable module, offline and reproducible.
 
 ## API
 
@@ -31,22 +43,11 @@ uvicorn doc_intelligence.serving.main:app --port 8000
 
 curl -X POST localhost:8000/extract \
   -H "Content-Type: application/json" \
-  -d '{"document_id": "inv1", "text": "INVOICE number INV-42. Total: 1250.00. Due date: 2026-09-15"}'
+  -d '{"document_id": "inv1", "text": "INVOICE number INV-42. Total: CHF 1081.00. MWST rate 8.1%. MWST amount 81.00. IBAN: CH9300762011623852957. Invoice date: 2026-09-15"}'
 ```
 
-```json
-{
-  "document_id": "inv1",
-  "doc_type": "invoice",
-  "fields": {
-    "invoice_number": {"value": "INV-42", "confidence": 0.8},
-    "total_amount": {"value": "1250.00", "confidence": 0.8},
-    "due_date": {"value": "2026-09-15", "confidence": 0.8},
-    "vendor": {"value": null, "confidence": 0.0}
-  },
-  "needs_review": true
-}
-```
+Returns the extracted fields with confidence, `is_valid`, `needs_review`, and
+`review_reasons`.
 
 ## Quickstart
 
@@ -54,6 +55,7 @@ curl -X POST localhost:8000/extract \
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 python -m pytest
+python scripts/run_eval.py        # regenerate docs/eval_report.md
 uvicorn doc_intelligence.serving.main:app --port 8000
 ```
 
@@ -66,27 +68,31 @@ kubectl apply -f k8s/
 
 ## Backends
 
-| Component  | Offline (default)      | Production                          |
-|------------|------------------------|-------------------------------------|
-| Extraction | RuleExtractor (regex)  | LLM (`EXTRACTION_BACKEND=llm`)      |
-| OCR        | direct text            | Azure Document Intelligence         |
+| Component  | Offline (default)      | Production                     |
+|------------|------------------------|--------------------------------|
+| Extraction | RuleExtractor (schema) | LLM (`EXTRACTION_BACKEND=llm`) |
+| OCR        | direct text            | Azure Document Intelligence    |
 
 ## Layout
 
 src/doc_intelligence/
-types.py domain types (RawDocument, Field, ExtractionResult)
+types.py domain types (RawDocument, Field, ExtractionResult, ValidationError)
 ingest/ document type inference
-extraction/ pluggable field extractor with confidence scoring
+splitting/ Docsplit-style boundary detection
+schemas/ YAML field schemas + registry (single source of truth)
+extraction/ schema-driven field extractor with confidence
+validation/ business rules (required, dates, IBAN, MWST)
 eval/ per-field precision / recall / F1
 serving/ FastAPI app + ASGI entrypoint
-tests/ unit + integration (10 tests)
+tests/ unit + integration (21 tests)
 k8s/ deployment, service, HPA
-.github/workflows/ lint + tests + coverage + docker build & smoke test
+scripts/ build_golden.py, run_eval.py, serve.py
+docs/ eval_report.md
 
 
 ## Stack
 
-Python 3.11, FastAPI, Pydantic, pytest, ruff, Docker, Kubernetes, GitHub Actions.
+Python 3.11, FastAPI, Pydantic, PyYAML, pytest, ruff, Docker, Kubernetes, GitHub Actions.
 
 ## License
 
