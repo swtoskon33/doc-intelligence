@@ -1,0 +1,11 @@
+doc_type: contract
+fields:
+  party:
+    pattern: '(?:between|party)\s*[:]?\s*([A-Za-z][A-Za-z0-9 &.,]+)'
+    required: true
+  effective_date:
+    pattern: 'effective\s*(?:date)?\s*[:]?\s*([0-9]{1,4}[-/][0-9]{1,2}[-/][0-9]{1,4})'
+    required: true
+  term:
+    pattern: 'term\s*(?:of)?\s*[:]?\s*([0-9]+\s*(?:months|years))'
+    required: false

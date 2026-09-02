@@ -1,0 +1,29 @@
+doc_type: invoice
+fields:
+  invoice_number:
+    pattern: 'invoice\s*(?:number|no\.?|#)?\s*[:#]?\s*([A-Z0-9\-]+)'
+    required: true
+  vendor:
+    pattern: '(?:from|vendor|bill from)\s*[:]?\s*([A-Za-z][A-Za-z0-9 &.,]+)'
+    required: false
+  iban:
+    pattern: '(?:iban)\s*[:]?\s*([A-Z]{2}[0-9 ]{15,32})'
+    required: false
+  total_amount:
+    pattern: '(?:total|amount due|betrag)\s*[:$]?\s*(?:CHF|EUR)?\s*([0-9][0-9,]*\.?[0-9]{0,2})'
+    required: true
+  mwst_amount:
+    pattern: '(?:mwst|vat)\s*(?:amount|betrag)?\s*[:]?\s*(?:CHF)?\s*([0-9][0-9,]*\.?[0-9]{0,2})'
+    required: false
+  mwst_rate:
+    pattern: '(?:mwst|vat)\s*(?:rate|satz)?\s*[:]?\s*([0-9]+\.?[0-9]*)\s*%'
+    required: false
+  currency:
+    pattern: '\b(CHF|EUR|USD)\b'
+    required: false
+  invoice_date:
+    pattern: '(?:invoice date|date|datum)\s*[:]?\s*([0-9]{1,4}[-/][0-9]{1,2}[-/][0-9]{1,4})'
+    required: true
+  due_date:
+    pattern: 'due\s*(?:date)?\s*[:]?\s*([0-9]{1,4}[-/][0-9]{1,2}[-/][0-9]{1,4})'
+    required: false

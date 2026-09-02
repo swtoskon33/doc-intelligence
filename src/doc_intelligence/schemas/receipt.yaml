@@ -1,0 +1,11 @@
+doc_type: receipt
+fields:
+  merchant:
+    pattern: '(?:merchant|store)\s*[:]?\s*([A-Za-z][A-Za-z0-9 &.,]+)'
+    required: false
+  total_amount:
+    pattern: '(?:total|total paid)\s*[:$]?\s*(?:CHF|EUR|\$)?\s*([0-9][0-9,.]*)'
+    required: true
+  date:
+    pattern: '(?:date|datum)\s*[:]?\s*([0-9]{1,4}[-/][0-9]{1,2}[-/][0-9]{1,4})'
+    required: true

@@ -3,13 +3,8 @@ from __future__ import annotations
 
 import re
 
-from doc_intelligence.types import DocumentType, ExtractionResult, ValidationError
-
-REQUIRED = {
-    DocumentType.INVOICE: ["invoice_number", "total_amount", "invoice_date"],
-    DocumentType.RECEIPT: ["total_amount", "date"],
-    DocumentType.CONTRACT: ["party", "effective_date"],
-}
+from doc_intelligence.schemas.registry import required_fields
+from doc_intelligence.types import ExtractionResult, ValidationError
 
 _DATE = re.compile(r"^\d{1,4}[-/]\d{1,2}[-/]\d{1,4}$")
 
@@ -39,7 +34,7 @@ def _iban_valid(iban: str) -> bool:
 def validate(result: ExtractionResult) -> list[ValidationError]:
     """Run all business rules against an extraction result."""
     errors = []
-    for name in REQUIRED.get(result.doc_type, []):
+    for name in required_fields(result.doc_type):
         if result.value(name) is None:
             errors.append(ValidationError(name, "required field missing"))
     for name in ("invoice_date", "due_date", "date", "effective_date"):
