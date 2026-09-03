@@ -9,3 +9,4 @@ data/*.db
 mlruns/
 /models/
 data/vendor_memory.json
+models/
