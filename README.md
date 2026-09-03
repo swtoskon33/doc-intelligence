@@ -353,7 +353,7 @@ src/doc_intelligence/
   tracking/        MLflow experiment tracking
   serving/         FastAPI app, alias registry, ASGI entrypoint
 
-tests/             unit + integration (77 tests)
+tests/             unit + integration (76 tests)
 k8s/               deployment, service, HPA
 monitoring/        grafana_dashboard.json
 scripts/           build_golden.py, run_eval.py, benchmark_extractors.py,
