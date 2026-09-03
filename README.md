@@ -196,7 +196,8 @@ docs/              eval_report.md, model_comparison.md
 
 ## Stack
 
-Python 3.11, FastAPI, Pydantic, PyYAML, pytest, ruff, Docker, Kubernetes, GitHub Actions.
+Python 3.11, PyTorch, Hugging Face Transformers (LayoutLMv3), scikit-learn, MLflow,
+FastAPI, Pydantic, PyYAML, Prometheus, pytest, ruff, Docker, Kubernetes, GitHub Actions.
 
 ## License
 
