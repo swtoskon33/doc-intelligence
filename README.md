@@ -313,7 +313,8 @@ src/doc_intelligence/
   ingest/          document type inference
   splitting/       Docsplit-style boundary detection
   schemas/         YAML field schemas + registry (single source of truth)
-  extraction/      base interface + rule / llm / hf backends
+  extraction/      base interface + rule / llm / hf / layoutlmv3 backends
+  layout/          FUNSD dataset, LayoutLMv3 preprocessing and training
   validation/      business rules (required fields, dates, IBAN, MWST)
   eval/            per-field precision / recall / F1
   ocr/             OCR backends (local, Azure Document Intelligence)

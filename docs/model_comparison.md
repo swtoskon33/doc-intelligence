@@ -28,3 +28,22 @@ Skipped: llm. The LLM backend needs OPENAI_API_KEY; the HF backend needs `transf
 | total_amount | 0.778 | 0.778 | 0.778 | 9 |
 
 Reading the table: the rule backend is fast and free but brittle on noisy or German-language text; an LLM backend trades latency and cost for robustness; the HF question-answering backend sits in between and needs no API key once the model is cached. The interface is identical, so swapping backends is one env var.
+
+## LayoutLMv3, measured separately
+
+LayoutLMv3 is not in the table above because it cannot share that evaluation: it is
+fine-tuned on FUNSD with form-semantic labels (question / answer / header), while the
+other backends extract invoice fields from the synthetic set. Same task family,
+different dataset and different label space, so a single row would be misleading.
+
+| Backend | Dataset | Labels | Precision | Recall | F1 |
+|---------|---------|--------|-----------|--------|-----|
+| rule | 12 synthetic docs | invoice fields | - | - | field acc. 0.829 |
+| hf | 12 synthetic docs | invoice fields | - | - | field acc. 0.561 |
+| LayoutLMv3 | FUNSD, 50 test docs | form entities | 0.791 | 0.836 | 0.813 |
+
+The LayoutLMv3 figures are entity-level seqeval scores after three epochs of
+fine-tuning (see docs/layoutlm_training.json). The layout ablation in
+docs/layout_ablation.md shows the same checkpoint dropping to 0.014 F1 when the
+bounding boxes are zeroed, which is the evidence that the spatial signal is doing
+the work.
