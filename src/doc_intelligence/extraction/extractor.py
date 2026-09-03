@@ -1,26 +1,26 @@
-"""Structured field extraction: turn a RawDocument into typed Fields.
+"""Extractor registry: select a backend and expose them for benchmarking.
 
-Field definitions live in the schema registry (YAML), so both extractors work from the
-same source of truth. Two backends behind one interface, selected by EXTRACTION_BACKEND:
-  - "rule" : regex extraction driven by the schema -- offline, reproducible, CI default.
-  - "llm"  : an LLM with structured JSON output -- the production path (OpenAI / Azure
-             OpenAI), wired behind the same interface.
+Backends:
+  rule - regex driven by the YAML schema. Offline, deterministic, the CI default.
+  llm  - LLM with structured JSON output (OpenAI / Azure OpenAI). Production path.
+  hf   - transformer question answering over the document text.
+
+All three implement the same Extractor interface, so scripts/benchmark_extractors.py
+can score them side by side on one golden set.
 """
 from __future__ import annotations
 
 import os
 
+from doc_intelligence.extraction.base import Extractor
 from doc_intelligence.schemas.registry import load_schema
 from doc_intelligence.types import ExtractionResult, Field, RawDocument
 
 
-class Extractor:
-    def extract(self, doc: RawDocument) -> ExtractionResult:  # pragma: no cover
-        raise NotImplementedError
-
-
 class RuleExtractor(Extractor):
     """Regex extraction driven by the per-type schema. Offline, deterministic."""
+
+    name = "rule"
 
     def extract(self, doc: RawDocument) -> ExtractionResult:
         specs = load_schema(doc.doc_type)
@@ -35,9 +35,15 @@ class RuleExtractor(Extractor):
         return ExtractionResult(document_id=doc.id, doc_type=doc.doc_type, fields=fields)
 
 
-def get_extractor() -> Extractor:
-    """Select an extractor from EXTRACTION_BACKEND (default: rule)."""
-    backend = os.getenv("EXTRACTION_BACKEND", "rule").lower()
-    if backend == "llm":
-        raise NotImplementedError("LLM backend requires an API key; set it up in deployment")
+def get_extractor(backend: str | None = None) -> Extractor:
+    """Return an extractor by name (default from EXTRACTION_BACKEND, else rule)."""
+    name = (backend or os.getenv("EXTRACTION_BACKEND", "rule")).lower()
+    if name == "llm":
+        from doc_intelligence.extraction.llm import LLMExtractor
+
+        return LLMExtractor()
+    if name == "hf":
+        from doc_intelligence.extraction.hf import HFExtractor
+
+        return HFExtractor()
     return RuleExtractor()
