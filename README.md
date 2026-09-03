@@ -30,6 +30,25 @@ Batch -> Split -> Classify -> Extract -> Validate -> Review? -> Output
 - **Serving & deploy**: FastAPI (`POST /extract`, `GET /health`), Docker image, and
   Kubernetes manifests (deployment, service, HPA) with liveness/readiness probes.
 
+## Extraction backends compared
+
+Three backends behind one interface, scored on the same golden set of 12 documents
+(regenerate: `python scripts/benchmark_extractors.py`, full table in
+docs/model_comparison.md):
+
+| Backend | Field accuracy | Flagged for review | Latency / doc |
+|---------|----------------|--------------------|---------------|
+| rule (regex, schema-driven) | 0.829 | 9/12 | 0.4 ms |
+| hf (transformer QA) | 0.561 | 10/12 | 500 ms |
+| llm (OpenAI / Azure) | needs an API key | - | - |
+
+On structured documents the regex backend beats a general-purpose transformer on both
+accuracy and latency. The SQuAD-trained QA model is tuned for prose, not forms: it has no
+layout signal, and it cannot abstain — when a field is absent it returns a confident span
+from elsewhere in the document. That is the argument for keeping rules where the format is
+stable, and for a layout-aware model (LayoutLM family) or an LLM that can return null
+where it is not.
+
 ## How it maps to IDP
 
 Classification, splitting, extraction, validation, and review are the core stages of a
@@ -68,10 +87,10 @@ kubectl apply -f k8s/
 
 ## Backends
 
-| Component  | Offline (default)      | Production                     |
-|------------|------------------------|--------------------------------|
-| Extraction | RuleExtractor (schema) | LLM (`EXTRACTION_BACKEND=llm`) |
-| OCR        | direct text            | Azure Document Intelligence    |
+| Component  | Offline (default)      | Alternatives                                    |
+|------------|------------------------|-------------------------------------------------|
+| Extraction | RuleExtractor (schema) | `EXTRACTION_BACKEND=hf` or `=llm`               |
+| OCR        | direct text            | Azure Document Intelligence                     |
 
 ## Layout
 
@@ -84,7 +103,7 @@ extraction/ schema-driven field extractor with confidence
 validation/ business rules (required, dates, IBAN, MWST)
 eval/ per-field precision / recall / F1
 serving/ FastAPI app + ASGI entrypoint
-tests/ unit + integration (21 tests)
+tests/ unit + integration (25 tests)
 k8s/ deployment, service, HPA
 scripts/ build_golden.py, run_eval.py, serve.py
 docs/ eval_report.md
