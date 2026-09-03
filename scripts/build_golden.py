@@ -1,8 +1,8 @@
-"""Build a golden evaluation set of sample documents with ground-truth fields.
+"""Build a golden evaluation set of realistic document samples.
 
-Writes data/samples/golden.json: a list of {id, text, doc_type, truth} records covering
-invoices (incl. Swiss VAT), receipts, and contracts -- some clean, some with missing or
-malformed fields so the eval is discriminative, not a guaranteed 1.0.
+Covers clean invoices, Swiss VAT variants, noisy OCR-like text, missing fields, an
+invalid IBAN, receipts and contracts -- so the eval discriminates between extraction
+backends instead of everything scoring 1.0.
 
     python scripts/build_golden.py
 """
@@ -16,25 +16,56 @@ OUT = Path("data/samples/golden.json")
 SAMPLES = [
     {
         "id": "inv_clean",
-        "text": "INVOICE number INV-1001. Vendor: Alpine Supplies AG. "
-                "Total: CHF 1081.00. MWST rate 8.1%. MWST amount 81.00. "
-                "IBAN: CH9300762011623852957. Invoice date: 2026-03-15. Currency CHF",
+        "text": "INVOICE number INV-1001. Vendor: Alpine Supplies AG. Total: CHF 1081.00. "
+                "MWST rate 8.1%. MWST amount 81.00. IBAN: CH9300762011623852957. "
+                "Invoice date: 2026-03-15. Currency CHF",
         "doc_type": "invoice",
-        "truth": {"invoice_number": "INV-1001", "total_amount": "1081.00",
-                  "mwst_rate": "8.1", "invoice_date": "2026-03-15", "currency": "CHF"},
+        "truth": {"invoice_number": "INV-1001", "total_amount": "1081.00", "mwst_rate": "8.1",
+                  "invoice_date": "2026-03-15", "currency": "CHF",
+                  "iban": "CH9300762011623852957"},
+    },
+    {
+        "id": "inv_reduced_vat",
+        "text": "INVOICE number INV-1002. Total: CHF 260.00. MWST rate 2.6%. MWST amount 6.59. "
+                "Invoice date: 2026-04-02. Currency CHF",
+        "doc_type": "invoice",
+        "truth": {"invoice_number": "INV-1002", "total_amount": "260.00", "mwst_rate": "2.6",
+                  "invoice_date": "2026-04-02", "currency": "CHF"},
     },
     {
         "id": "inv_missing_date",
-        "text": "INVOICE number INV-1002. Total: CHF 540.00. Currency CHF",
+        "text": "INVOICE number INV-1003. Total: CHF 540.00. Currency CHF",
         "doc_type": "invoice",
-        "truth": {"invoice_number": "INV-1002", "total_amount": "540.00", "currency": "CHF"},
+        "truth": {"invoice_number": "INV-1003", "total_amount": "540.00", "currency": "CHF"},
     },
     {
-        "id": "inv_paraphrased",
-        "text": "Rechnung Nr INV-1003. Betrag: CHF 200.00. Datum: 2026-05-01",
+        "id": "inv_german",
+        "text": "Rechnung Nr INV-1004. Betrag: CHF 200.00. Datum: 2026-05-01. MWST Satz 8.1%",
         "doc_type": "invoice",
-        "truth": {"invoice_number": "INV-1003", "total_amount": "200.00",
-                  "invoice_date": "2026-05-01"},
+        "truth": {"invoice_number": "INV-1004", "total_amount": "200.00",
+                  "invoice_date": "2026-05-01", "mwst_rate": "8.1"},
+    },
+    {
+        "id": "inv_noisy_ocr",
+        "text": "1NVOICE  number   INV-1005 .  T0tal :  CHF  99.90 \n Invoice date : 2026-06-11",
+        "doc_type": "invoice",
+        "truth": {"invoice_number": "INV-1005", "invoice_date": "2026-06-11"},
+    },
+    {
+        "id": "inv_bad_iban",
+        "text": "INVOICE number INV-1006. Total: CHF 400.00. IBAN: CH0000000000000000000. "
+                "Invoice date: 2026-07-01",
+        "doc_type": "invoice",
+        "truth": {"invoice_number": "INV-1006", "total_amount": "400.00",
+                  "invoice_date": "2026-07-01", "iban": "CH0000000000000000000"},
+    },
+    {
+        "id": "inv_multiline",
+        "text": "INVOICE\nNumber: INV-1007\nVendor: Helvetia Trading GmbH\n"
+                "Total: CHF 2500.00\nMWST rate 8.1%\nInvoice date: 2026-08-20",
+        "doc_type": "invoice",
+        "truth": {"invoice_number": "INV-1007", "total_amount": "2500.00",
+                  "mwst_rate": "8.1", "invoice_date": "2026-08-20"},
     },
     {
         "id": "rec_clean",
@@ -49,12 +80,24 @@ SAMPLES = [
         "truth": {"total_amount": "12.90", "date": "2026-02-11"},
     },
     {
+        "id": "rec_noisy",
+        "text": "RECEIPT\nStore: Migros Zurich\nTotal :  CHF  78.45\nDate:  2026-03-03",
+        "doc_type": "receipt",
+        "truth": {"merchant": "Migros Zurich", "total_amount": "78.45", "date": "2026-03-03"},
+    },
+    {
         "id": "con_clean",
         "text": "AGREEMENT between Alpha GmbH and Beta AG. Effective date: 2026-01-01. "
                 "Term of 24 months.",
         "doc_type": "contract",
         "truth": {"party": "Alpha GmbH and Beta AG", "effective_date": "2026-01-01",
                   "term": "24 months"},
+    },
+    {
+        "id": "con_no_term",
+        "text": "AGREEMENT between Gamma SA and Delta AG. Effective date: 2026-09-30.",
+        "doc_type": "contract",
+        "truth": {"party": "Gamma SA and Delta AG", "effective_date": "2026-09-30"},
     },
 ]
 
