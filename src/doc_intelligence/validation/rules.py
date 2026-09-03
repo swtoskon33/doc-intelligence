@@ -2,26 +2,86 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 
 from doc_intelligence.schemas.registry import required_fields
 from doc_intelligence.types import ExtractionResult, ValidationError
 
-_DATE = re.compile(r"^\d{1,4}[-/]\d{1,2}[-/]\d{1,4}$")
+# Accepted separators include "." because Swiss and German invoices write 15.09.2026.
+_DATE_SHAPE = re.compile(r"^(\d{1,4})[-/.](\d{1,2})[-/.](\d{1,4})$")
+
+
+def _is_real_date(value: str) -> bool:
+    """True if the value is a well-formed date, not merely date-shaped.
+
+    Checking the shape alone accepts 9999/99/9999. Both day-first (15.09.2026) and
+    year-first (2026-09-15) orders are common on European invoices, so a value passes if
+    it parses under either reading.
+    """
+    match = _DATE_SHAPE.match(value.strip())
+    if not match:
+        return False
+    a, b, cc = (int(g) for g in match.groups())
+    for year, month, day in ((a, b, cc), (cc, b, a)):
+        if year < 1900 or year > 2200:
+            continue
+        try:
+            date(year, month, day)
+        except ValueError:
+            continue
+        return True
+    return False
+
+
+class AmountParseError(ValueError):
+    """Raised when an amount cannot be parsed, so the caller cannot skip it silently."""
 
 
 def _to_float(value):
+    """Parse an amount written in European or Anglo notation.
+
+    Handles 1'081.00, 1.081,00, 1,081.00 and 1081. Raises rather than returning None on
+    failure: a silently skipped amount means a wrong invoice passes validation, which is
+    the opposite of what this module is for.
+    """
     if value is None:
         return None
+    if not isinstance(value, str):
+        raise AmountParseError(f"amount is not text: {value!r}")
+
+    cleaned = value.strip().replace("'", "").replace(" ", "").replace("\u00a0", "")
+    if not cleaned:
+        raise AmountParseError("amount is empty")
+
+    # decide which separator is the decimal one: the last separator, if it is followed
+    # by one or two digits, is decimal; anything else groups thousands.
+    last_comma, last_dot = cleaned.rfind(","), cleaned.rfind(".")
+    decimal_pos = max(last_comma, last_dot)
+    if decimal_pos != -1 and len(cleaned) - decimal_pos - 1 in (1, 2):
+        integer = re.sub(r"[.,]", "", cleaned[:decimal_pos])
+        cleaned = integer + "." + cleaned[decimal_pos + 1:]
+    else:
+        cleaned = re.sub(r"[.,]", "", cleaned)
+
     try:
-        return float(value.replace(",", "").replace("'", ""))
-    except (ValueError, AttributeError):
-        return None
+        return float(cleaned)
+    except ValueError as exc:
+        raise AmountParseError(f"cannot parse amount {value!r}") from exc
 
 
 def _iban_valid(iban: str) -> bool:
-    """IBAN mod-97 checksum (ISO 13616)."""
+    """IBAN check: structure, length, then the mod-97 checksum (ISO 13616).
+
+    Checksum alone is not enough -- roughly one in 97 random strings passes it. An IBAN
+    must also be 15-34 characters, start with two letters (country) followed by two
+    digits (check digits), and contain nothing but alphanumerics.
+    """
     s = iban.replace(" ", "").upper()
-    if len(s) < 5 or not s[:2].isalpha():
+    if not (15 <= len(s) <= 34):
+        return False
+    if not (s[:2].isalpha() and s[2:4].isdigit()):
+        return False
+    if not s.isalnum():
         return False
     rearranged = s[4:] + s[:4]
     digits = "".join(str(int(ch, 36)) if ch.isalpha() else ch for ch in rearranged)
@@ -39,18 +99,35 @@ def validate(result: ExtractionResult) -> list[ValidationError]:
             errors.append(ValidationError(name, "required field missing"))
     for name in ("invoice_date", "due_date", "date", "effective_date"):
         v = result.value(name)
-        if v is not None and not _DATE.match(v.strip()):
-            errors.append(ValidationError(name, "date not in a recognised format"))
+        if v is not None and not _is_real_date(v.strip()):
+            errors.append(ValidationError(name, "not a valid calendar date"))
     iban = result.value("iban")
     if iban is not None and not _iban_valid(iban):
         errors.append(ValidationError("iban", "IBAN checksum failed"))
-    total = _to_float(result.value("total_amount"))
-    mwst = _to_float(result.value("mwst_amount"))
-    rate = _to_float(result.value("mwst_rate"))
+    def amount(name):
+        """Parse a numeric field; an unparseable value is a validation error, not a skip."""
+        raw = result.value(name)
+        if raw is None:
+            return None
+        try:
+            return _to_float(raw)
+        except AmountParseError:
+            errors.append(ValidationError(name, f"amount not parseable: {raw!r}"))
+            return None
+
+    total = amount("total_amount")
+    mwst = amount("mwst_amount")
+    rate = amount("mwst_rate")
     if total is not None and mwst is not None and rate is not None and rate > 0:
         expected = total * rate / (100 + rate)
         if abs(expected - mwst) > max(0.05, expected * 0.02):
-            errors.append(ValidationError("mwst_amount", "VAT amount inconsistent with total and rate"))
+            errors.append(ValidationError(
+                "mwst_amount", "VAT amount inconsistent with total and rate"))
+    elif mwst is not None and rate is not None and total is None:
+        # we have VAT figures but no total to check them against
+        errors.append(ValidationError(
+            "total_amount", "VAT present but total missing, consistency unverifiable"))
+
     return errors
 
 
