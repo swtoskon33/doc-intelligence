@@ -120,6 +120,32 @@ SAMPLES = [
         "truth": {"invoice_number": "INV-1010", "total_amount": "250.00",
                   "invoice_date": "2026-04-04"},
     },
+    {
+        "id": "inv_swiss_format",
+        "text": "INVOICE number INV-1011. Vendor: Zurich Handels AG. "
+                "Total: CHF 1'081.00. MWST rate 8.1%. MWST amount 81.00. "
+                "IBAN: CH9300762011623852957. Invoice date: 15.09.2026",
+        "doc_type": "invoice",
+        "truth": {"invoice_number": "INV-1011", "total_amount": "1'081.00",
+                  "invoice_date": "15.09.2026", "mwst_rate": "8.1",
+                  "iban": "CH9300762011623852957"},
+    },
+    {
+        "id": "inv_german_format",
+        "text": "Rechnung Nr INV-1012. Betrag: EUR 1.081,00. MWST Satz 8.1%. "
+                "Datum: 15.09.2026",
+        "doc_type": "invoice",
+        "truth": {"invoice_number": "INV-1012", "total_amount": "1.081,00",
+                  "invoice_date": "15.09.2026", "mwst_rate": "8.1"},
+    },
+    {
+        "id": "inv_uk_iban",
+        "text": "INVOICE number INV-1013. Total: 950.00. "
+                "IBAN: GB29NWBK60161331926819. Invoice date: 2026-05-20",
+        "doc_type": "invoice",
+        "truth": {"invoice_number": "INV-1013", "total_amount": "950.00",
+                  "iban": "GB29NWBK60161331926819", "invoice_date": "2026-05-20"},
+    },
 ]
 
 
