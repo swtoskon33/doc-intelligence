@@ -10,6 +10,10 @@ prefers the cheap deterministic backend and escalates to a fallback only when it
 
 Vendor memory (optional) fills stable fields -- IBAN, VAT rate, currency -- from the last
 accepted document of the same sender when this one does not state them.
+
+When a document arrives with word bounding boxes, process_layout_document routes it
+through the layout-aware backend instead: same decision logic, same review routing,
+but the entities come from LayoutLMv3 rather than regex over flat text.
 """
 from __future__ import annotations
 
@@ -21,7 +25,7 @@ from doc_intelligence.extraction.extractor import get_extractor
 from doc_intelligence.ingest.documents import ingest_document
 from doc_intelligence.memory.vendor import VendorMemory
 from doc_intelligence.splitting.splitter import split_documents
-from doc_intelligence.types import DocumentType, ExtractionResult
+from doc_intelligence.types import DocumentType, ExtractionResult, Field
 from doc_intelligence.validation.rules import validate_in_place
 
 RECALLED_CONFIDENCE = 0.6  # a remembered value is weaker evidence than a read one
@@ -112,6 +116,46 @@ class DocumentPipeline:
         """Process a single document; the type is inferred from its text."""
         doc = ingest_document(doc_id, text)
         return self._process_one(doc_id, text, (0, 0), doc.doc_type)
+
+    def process_layout_document(
+        self, doc_id: str, words: list[str], boxes: list[list[int]], image=None,
+    ) -> ProcessedDocument:
+        """Process a document that carries word positions, via the layout backend.
+
+        The layout backend predicts entities rather than schema fields, so its entities
+        are mapped onto Fields keyed by entity label. Everything downstream -- confidence
+        thresholds, validation, the accept/review decision -- is the same code path the
+        text backends use.
+        """
+        from PIL import Image
+
+        from doc_intelligence.extraction.layoutlm import LayoutLMv3Extractor
+
+        backend = LayoutLMv3Extractor()
+        if not backend.available:
+            raise RuntimeError(
+                "no LayoutLMv3 checkpoint; train one with scripts/train_layoutlm.py")
+        if len(words) != len(boxes):
+            raise ValueError("words and boxes must be the same length")
+
+        page = image or Image.new("RGB", (1000, 1000), "white")
+        entities = backend.predict_entities(page, words, boxes)
+
+        # one field per entity, keyed label_index so repeated labels do not collide
+        fields: dict[str, Field] = {}
+        for i, ent in enumerate(entities):
+            fields[f"{ent.label.lower()}_{i}"] = Field(
+                name=f"{ent.label.lower()}_{i}", value=ent.text, confidence=ent.confidence)
+
+        result = ExtractionResult(
+            document_id=doc_id, doc_type=DocumentType.UNKNOWN, fields=fields)
+        result = validate_in_place(result)
+        decision = Decision.NEEDS_REVIEW if result.needs_review else Decision.AUTO_ACCEPT
+        return ProcessedDocument(
+            document_id=doc_id, page_range=(0, 0), doc_type=result.doc_type,
+            result=result, backend=backend.name, decision=decision,
+            reasons=result.review_reasons,
+        )
 
     def remember_accepted(self, processed: ProcessedDocument) -> None:
         """Feed an auto-accepted document back into vendor memory."""

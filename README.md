@@ -92,6 +92,19 @@ Every diagram below reflects code in this repository.
 ```
 
 
+### What this does and does not show
+
+The fine-tuning runs on FUNSD, whose labels are form semantics (question / answer /
+header), not the invoice fields the rule and LLM backends extract. So the numbers
+below demonstrate that the pipeline -- dataset, preprocessing, training loop,
+checkpointing, decoding, serving -- works end to end on a real annotated benchmark.
+They are not an invoice-extraction score, and the two evaluations in this repo are
+deliberately kept separate for that reason.
+
+Retraining on invoice-specific BIO labels is a dataset change, not a code change:
+point the loader at annotated invoices, update the label list, rerun the same
+script. The obstacle is annotated data, not the implementation.
+
 ### Training pipeline
 
 ```

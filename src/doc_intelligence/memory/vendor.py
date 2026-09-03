@@ -5,9 +5,11 @@ currency. When extraction misses one of those fields, the most recent accepted d
 from that vendor is a better guess than nothing -- and a *contradiction* with it is a
 signal worth flagging.
 
-This is retrieval over a small store of past documents, not a language model: TF-IDF
-similarity over vendor text, nearest match, then fill or flag. It is included because it
-measurably reduces missing fields, not for the label.
+Deliberately simple: an in-memory store keyed by vendor name, with exact then substring
+matching. That is enough to demonstrate the recall-and-fill behaviour and its effect on
+the review rate. A production version would key on a normalised vendor identifier (or
+the IBAN) and live in a database rather than a JSON file -- the interface here is the
+part that would survive that change.
 """
 from __future__ import annotations
 
