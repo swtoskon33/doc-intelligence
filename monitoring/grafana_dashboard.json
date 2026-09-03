@@ -1,0 +1,101 @@
+{
+  "title": "doc-intelligence",
+  "schemaVersion": 39,
+  "editable": true,
+  "panels": [
+    {
+      "title": "Extraction rate (req/s)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "rate(doc_extractions_total[5m])",
+          "legendFormat": "{{backend}} / {{alias}}"
+        }
+      ]
+    },
+    {
+      "title": "p95 extraction latency (s)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(doc_extraction_latency_seconds_bucket[5m]))",
+          "legendFormat": "p95 {{backend}}"
+        }
+      ]
+    },
+    {
+      "title": "Human review rate",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(doc_needs_review_total[15m]) / rate(doc_extractions_total[15m])",
+          "legendFormat": "review %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 1,
+          "unit": "percentunit"
+        }
+      }
+    },
+    {
+      "title": "Validation failure rate",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(doc_validation_failures_total[15m]) / rate(doc_extractions_total[15m])",
+          "legendFormat": "invalid %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 1,
+          "unit": "percentunit"
+        }
+      }
+    },
+    {
+      "title": "OCR backend usage",
+      "type": "stat",
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "sum by (ocr_backend) (doc_ocr_requests_total)",
+          "legendFormat": "{{ocr_backend}}"
+        }
+      ]
+    }
+  ]
+}

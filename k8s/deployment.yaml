@@ -20,8 +20,12 @@ spec:
           ports:
             - containerPort: 8000
           env:
-            - name: EXTRACTION_BACKEND
+            - name: CHAMPION_BACKEND
               value: "rule"
+            - name: CHALLENGER_BACKEND
+              value: "llm"
+            - name: OCR_BACKEND
+              value: "local"
           resources:
             requests:
               cpu: "100m"

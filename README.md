@@ -49,6 +49,36 @@ from elsewhere in the document. That is the argument for keeping rules where the
 stable, and for a layout-aware model (LayoutLM family) or an LLM that can return null
 where it is not.
 
+## Serving, aliases and monitoring
+
+Requests are served through an alias, so promotion is a config flip rather than a
+redeploy:
+
+```
+POST /extract  {"document_id": "d1", "text": "...", "alias": "champion"}
+GET  /aliases  -> {"champion": "rule", "challenger": "llm"}
+GET  /metrics  -> Prometheus scrape
+GET  /health   -> liveness probe
+```
+
+Aliases come from `CHAMPION_BACKEND` / `CHALLENGER_BACKEND`; OCR from `OCR_BACKEND`.
+
+Metrics exposed: extraction count by backend / alias / document type, latency
+histogram, human-review rate, validation-failure rate, and OCR backend usage. A ready
+dashboard is in `monitoring/grafana_dashboard.json`.
+
+## Scanned documents
+
+`/extract` accepts `image_base64` alongside `text`. The local OCR backend (default)
+treats the payload as text so CI needs no cloud calls; `OCR_BACKEND=azure` routes scans
+through Azure Document Intelligence (prebuilt-read) when credentials are present.
+
+## Experiment tracking
+
+`scripts/benchmark_extractors.py` logs every backend evaluation to MLflow: backend and
+golden-set size as params, field accuracy, valid documents, review rate and latency as
+metrics. Tracking no-ops when MLflow is absent, so the benchmark still runs offline.
+
 ## How it maps to IDP
 
 Classification, splitting, extraction, validation, and review are the core stages of a
@@ -103,10 +133,14 @@ src/doc_intelligence/
   extraction/      base interface + rule / llm / hf backends
   validation/      business rules (required fields, dates, IBAN, MWST)
   eval/            per-field precision / recall / F1
-  serving/         FastAPI app + ASGI entrypoint
+  ocr/             OCR backends (local, Azure Document Intelligence)
+  monitoring/      Prometheus metrics
+  tracking/        MLflow experiment tracking
+  serving/         FastAPI app, alias registry, ASGI entrypoint
 
-tests/             unit + integration (25 tests)
+tests/             unit + integration (38 tests)
 k8s/               deployment, service, HPA
+monitoring/        grafana_dashboard.json
 scripts/           build_golden.py, run_eval.py, benchmark_extractors.py, serve.py
 docs/              eval_report.md, model_comparison.md
 ```
