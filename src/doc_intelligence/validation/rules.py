@@ -100,7 +100,7 @@ def validate(result: ExtractionResult) -> list[ValidationError]:
     for name in ("invoice_date", "due_date", "date", "effective_date"):
         v = result.value(name)
         if v is not None and not _is_real_date(v.strip()):
-            errors.append(ValidationError(name, "not a valid calendar date"))
+            errors.append(ValidationError(name, "not a valid date (bad format or invalid calendar date)"))
     iban = result.value("iban")
     if iban is not None and not _iban_valid(iban):
         errors.append(ValidationError("iban", "IBAN checksum failed"))
