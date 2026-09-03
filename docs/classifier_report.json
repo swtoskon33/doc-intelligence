@@ -1,0 +1,7 @@
+{
+  "documents": 15,
+  "leave_one_out_accuracy": 0.667,
+  "keyword_heuristic_accuracy": 0.933,
+  "training_accuracy_for_reference_only": 0.8,
+  "method": "leave-one-out cross-validation; the keyword heuristic requires no training so it is scored on the same documents"
+}

@@ -255,102 +255,20 @@ fields; it is not a language model.
 ### Trained classifier
 
 `scripts/train_classifier.py` fits a TF-IDF + logistic-regression classifier on the
-labelled golden set and reports it against the keyword heuristic:
+labelled golden set and scores it by leave-one-out cross-validation: every document
+is predicted by a model that never saw it. With 15 documents, training accuracy
+would only measure memorisation.
 
-| Classifier | Accuracy |
-|------------|----------|
-| trained (TF-IDF + logistic regression) | 1.000 |
-| keyword heuristic | 0.917 |
+| Classifier | Accuracy (15 documents) |
+|------------|--------------------------|
+| keyword heuristic | 0.933 |
+| trained model, leave-one-out | 0.667 |
+| trained model on its own training data | 0.800 (reference only) |
 
-Small numbers on a small set, but the comparison is measured rather than assumed.
+The heuristic wins, and that is the useful result. At this sample size TF-IDF has
+too little to learn from, while the keywords it competes against (INVOICE, RECEIPT,
+AGREEMENT) are a strong signal in this domain. The trained model would need an order
+of magnitude more documents before it earned its place; until then the cheap
+classifier is the right default. Full numbers in docs/classifier_report.json.
 
-## How it maps to IDP
 
-Classification, splitting, extraction, validation, and review are the core stages of a
-document-processing back office in regulated industries (accounting, insurance, banking).
-This repo implements each stage as a testable module, offline and reproducible.
-
-## API
-
-```bash
-uvicorn doc_intelligence.serving.main:app --port 8000
-
-curl -X POST localhost:8000/extract \
-  -H "Content-Type: application/json" \
-  -d '{"document_id": "inv1", "text": "INVOICE number INV-42. Total: CHF 1081.00. MWST rate 8.1%. MWST amount 81.00. IBAN: CH9300762011623852957. Invoice date: 2026-09-15"}'
-```
-
-Returns the extracted fields with confidence, `is_valid`, `needs_review`, and
-`review_reasons`.
-
-## Running the evaluations
-
-```
-python scripts/build_golden.py          # regenerate the golden set
-python scripts/run_eval.py              # per-field metrics -> docs/eval_report.md
-python scripts/benchmark_extractors.py  # backend comparison -> docs/model_comparison.md
-python scripts/train_classifier.py      # train the baseline classifier + compare
-python -m pytest                        # 42 tests (1 skipped without transformers)
-```
-
-## Quickstart
-
-```bash
-python3.11 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"                    # core + tests
-pip install -e ".[dev,ml,tracking]"        # + PyTorch, LayoutLMv3, MLflow
-python -m pytest
-python scripts/run_eval.py        # regenerate docs/eval_report.md
-uvicorn doc_intelligence.serving.main:app --port 8000
-```
-
-## Deploy
-
-```bash
-docker build -t doc-intelligence:latest .
-kubectl apply -f k8s/
-```
-
-## Backends
-
-| Component  | Offline (default)      | Alternatives                                    |
-|------------|------------------------|-------------------------------------------------|
-| Extraction | RuleExtractor (schema) | `EXTRACTION_BACKEND=hf`, `=llm` or `=layoutlmv3` |
-| OCR        | direct text            | Azure Document Intelligence                     |
-
-## Layout
-
-```
-src/doc_intelligence/
-  types.py         domain types (RawDocument, Field, ExtractionResult, ValidationError)
-  ingest/          document type inference
-  splitting/       Docsplit-style boundary detection
-  schemas/         YAML field schemas + registry (single source of truth)
-  extraction/      base interface + rule / llm / hf / layoutlmv3 backends
-  layout/          FUNSD dataset, LayoutLMv3 preprocessing and training
-  validation/      business rules (required fields, dates, IBAN, MWST)
-  eval/            per-field precision / recall / F1
-  ocr/             OCR backends (local, Azure Document Intelligence)
-  pipeline/        end-to-end orchestrator with accept/review decisions
-  memory/          vendor memory for recalling stable fields
-  models/          trained baseline document classifier
-  monitoring/      Prometheus metrics
-  tracking/        MLflow experiment tracking
-  serving/         FastAPI app, alias registry, ASGI entrypoint
-
-tests/             unit + integration (42 tests)
-k8s/               deployment, service, HPA
-monitoring/        grafana_dashboard.json
-scripts/           build_golden.py, run_eval.py, benchmark_extractors.py,
-                   train_classifier.py, serve.py
-docs/              eval_report.md, model_comparison.md
-```
-
-## Stack
-
-Python 3.11, PyTorch, Hugging Face Transformers (LayoutLMv3), scikit-learn, MLflow,
-FastAPI, Pydantic, PyYAML, Prometheus, pytest, ruff, Docker, Kubernetes, GitHub Actions.
-
-## License
-
-MIT
