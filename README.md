@@ -94,20 +94,22 @@ kubectl apply -f k8s/
 
 ## Layout
 
+```
 src/doc_intelligence/
-types.py domain types (RawDocument, Field, ExtractionResult, ValidationError)
-ingest/ document type inference
-splitting/ Docsplit-style boundary detection
-schemas/ YAML field schemas + registry (single source of truth)
-extraction/ schema-driven field extractor with confidence
-validation/ business rules (required, dates, IBAN, MWST)
-eval/ per-field precision / recall / F1
-serving/ FastAPI app + ASGI entrypoint
-tests/ unit + integration (25 tests)
-k8s/ deployment, service, HPA
-scripts/ build_golden.py, run_eval.py, serve.py
-docs/ eval_report.md
+  types.py         domain types (RawDocument, Field, ExtractionResult, ValidationError)
+  ingest/          document type inference
+  splitting/       Docsplit-style boundary detection
+  schemas/         YAML field schemas + registry (single source of truth)
+  extraction/      base interface + rule / llm / hf backends
+  validation/      business rules (required fields, dates, IBAN, MWST)
+  eval/            per-field precision / recall / F1
+  serving/         FastAPI app + ASGI entrypoint
 
+tests/             unit + integration (25 tests)
+k8s/               deployment, service, HPA
+scripts/           build_golden.py, run_eval.py, benchmark_extractors.py, serve.py
+docs/              eval_report.md, model_comparison.md
+```
 
 ## Stack
 
