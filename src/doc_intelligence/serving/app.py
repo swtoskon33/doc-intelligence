@@ -34,6 +34,29 @@ class ExtractRequest(BaseModel):
     alias: str = "champion"
 
 
+class LayoutRequest(BaseModel):
+    """Layout-aware extraction: words with their bounding boxes, already normalised."""
+
+    document_id: str
+    words: list[str]
+    boxes: list[list[int]]
+    image_base64: str | None = None
+
+
+class EntityOut(BaseModel):
+    label: str
+    text: str
+    confidence: float
+    box: list[int]
+
+
+class LayoutResponse(BaseModel):
+    document_id: str
+    entities: list[EntityOut]
+    served_by: str
+    needs_review: bool
+
+
 class FieldOut(BaseModel):
     value: str | None
     confidence: float
@@ -68,6 +91,47 @@ def create_app(extractor: Extractor | None = None) -> FastAPI:
     @app.get("/aliases")
     def aliases() -> dict[str, str]:
         return registry.as_dict()
+
+    @app.post("/extract/layout", response_model=LayoutResponse)
+    def extract_layout(req: LayoutRequest) -> LayoutResponse:
+        """Run the layout-aware backend over words and their boxes."""
+        from PIL import Image
+
+        from doc_intelligence.extraction.layoutlm import LayoutLMv3Extractor
+
+        backend = LayoutLMv3Extractor()
+        if not backend.available:
+            raise HTTPException(
+                status_code=503,
+                detail="LayoutLMv3 checkpoint not found; train it with scripts/train_layoutlm.py",
+            )
+        if len(req.words) != len(req.boxes):
+            raise HTTPException(status_code=422, detail="words and boxes must be the same length")
+
+        if req.image_base64:
+            import io
+
+            image = Image.open(io.BytesIO(decode_image_payload(req.image_base64))).convert("RGB")
+        else:
+            # LayoutLMv3 needs an image tensor; a blank page keeps the text+layout signal
+            image = Image.new("RGB", (1000, 1000), "white")
+
+        started = time.perf_counter()
+        entities = backend.predict_entities(image, req.words, req.boxes)
+        elapsed = time.perf_counter() - started
+
+        low_confidence = any(e.confidence < 0.7 for e in entities)
+        m.record(
+            backend=backend.name, alias="layout", doc_type="form", seconds=elapsed,
+            needs_review=low_confidence, is_valid=True, ocr_backend=ocr.name,
+        )
+        return LayoutResponse(
+            document_id=req.document_id,
+            entities=[EntityOut(label=e.label, text=e.text, confidence=e.confidence, box=e.box)
+                      for e in entities],
+            served_by=backend.name,
+            needs_review=low_confidence,
+        )
 
     @app.post("/extract", response_model=ExtractResponse)
     def extract(req: ExtractRequest) -> ExtractResponse:

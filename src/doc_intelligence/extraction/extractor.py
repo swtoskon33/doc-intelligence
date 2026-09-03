@@ -4,6 +4,8 @@ Backends:
   rule - regex driven by the YAML schema. Offline, deterministic, the CI default.
   llm  - LLM with structured JSON output (OpenAI / Azure OpenAI). Production path.
   hf   - transformer question answering over the document text.
+  layoutlmv3 - fine-tuned LayoutLMv3 token classification over words and boxes
+               (layout-aware; needs a trained checkpoint and word bounding boxes).
 
 All three implement the same Extractor interface, so scripts/benchmark_extractors.py
 can score them side by side on one golden set.
@@ -46,4 +48,8 @@ def get_extractor(backend: str | None = None) -> Extractor:
         from doc_intelligence.extraction.hf import HFExtractor
 
         return HFExtractor()
+    if name == "layoutlmv3":
+        from doc_intelligence.extraction.layoutlm import LayoutLMv3Extractor
+
+        return LayoutLMv3Extractor()
     return RuleExtractor()
