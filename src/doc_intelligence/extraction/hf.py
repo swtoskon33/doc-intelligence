@@ -57,10 +57,38 @@ class HFExtractor(Extractor):
         self.available = transformers_available()
 
     def _pipeline(self):
-        if self._pipe is None:
-            from transformers import pipeline  # lazy: heavy import
+        """Load tokenizer + QA model directly.
 
-            self._pipe = pipeline("question-answering", model=self.model)
+        The `question-answering` pipeline was removed in recent transformers releases,
+        so we run the model ourselves: encode (question, context), take the highest
+        scoring start/end span, and decode it.
+        """
+        if self._pipe is None:
+            import torch
+            from transformers import AutoModelForQuestionAnswering, AutoTokenizer
+
+            tok = AutoTokenizer.from_pretrained(self.model)
+            model = AutoModelForQuestionAnswering.from_pretrained(self.model)
+            model.eval()
+
+            def answer(question: str, context: str) -> tuple[str, float]:
+                enc = tok(question, context, return_tensors="pt", truncation=True, max_length=512)
+                with torch.no_grad():
+                    out = model(**enc)
+                start_probs = out.start_logits.softmax(-1)[0]
+                end_probs = out.end_logits.softmax(-1)[0]
+                start = int(start_probs.argmax())
+                end = int(end_probs.argmax())
+                if end < start:
+                    return "", 0.0
+                span = enc["input_ids"][0][start:end + 1]
+                text = tok.decode(span, skip_special_tokens=True).strip()
+                # tokenizer artifacts: 'INV - 1001' -> 'INV-1001', '1081. 00' -> '1081.00'
+                text = text.replace(' - ', '-').replace('. ', '.').replace(' , ', ',')
+                score = float(start_probs[start] * end_probs[end])
+                return text, score
+
+            self._pipe = answer
         return self._pipe
 
     def extract(self, doc: RawDocument) -> ExtractionResult:
@@ -76,9 +104,7 @@ class HFExtractor(Extractor):
         for n in names:
             question = _QUESTIONS.get(n, f"What is the {n.replace('_', ' ')}?")
             try:
-                out = qa(question=question, context=doc.text)
-                answer = (out.get("answer") or "").strip()
-                score = float(out.get("score", 0.0))
+                answer, score = qa(question, doc.text)
             except (RuntimeError, ValueError, KeyError):  # one bad question should not sink the doc
                 answer, score = "", 0.0
             fields[n] = Field(n, answer or None, confidence=round(score, 3) if answer else 0.0)

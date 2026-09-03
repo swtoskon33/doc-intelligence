@@ -4,9 +4,10 @@ Every extraction backend scored on the same golden set (12 documents: clean and 
 
 | Backend | Field accuracy | Valid docs | Flagged for review | Latency / doc (ms) |
 |---------|----------------|------------|--------------------|--------------------|
-| rule | 0.829 | 8/12 | 9/12 | 0.37 |
+| rule | 0.829 | 8/12 | 9/12 | 0.42 |
+| hf | 0.561 | 6/12 | 10/12 | 530.4 |
 
-Skipped: llm, hf. The LLM backend needs OPENAI_API_KEY and the HF backend needs `transformers` installed; both are optional so CI stays offline and dependency-light. The rule backend always runs.
+Skipped: llm. The LLM backend needs OPENAI_API_KEY; the HF backend needs `transformers` installed. Both are optional, so CI stays offline and dependency-light while the rule backend always runs.
 
 ## Per-field detail (rule)
 

@@ -93,9 +93,9 @@ def main() -> None:
 
     if skipped:
         note = (
-            "Skipped: " + ", ".join(skipped) + ". The LLM backend needs OPENAI_API_KEY and "
-            "the HF backend needs `transformers` installed; both are optional so CI stays "
-            "offline and dependency-light. The rule backend always runs."
+            "Skipped: " + ", ".join(skipped) + ". The LLM backend needs OPENAI_API_KEY; "
+            "the HF backend needs `transformers` installed. Both are optional, so CI stays "
+            "offline and dependency-light while the rule backend always runs."
         )
         lines += ["", note]
 
