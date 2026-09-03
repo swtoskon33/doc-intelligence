@@ -123,5 +123,33 @@
       "party": "Gamma SA and Delta AG",
       "effective_date": "2026-09-30"
     }
+  },
+  {
+    "id": "inv_swiss_date",
+    "text": "INVOICE number INV-1008. Total: CHF 1'081.00. MWST rate 8.1%. Invoice date: 15.09.2026",
+    "doc_type": "invoice",
+    "truth": {
+      "invoice_number": "INV-1008",
+      "invoice_date": "15.09.2026"
+    }
+  },
+  {
+    "id": "inv_bad_date",
+    "text": "INVOICE number INV-1009. Total: CHF 300.00. Invoice date: 2026-13-45",
+    "doc_type": "invoice",
+    "truth": {
+      "invoice_number": "INV-1009",
+      "total_amount": "300.00"
+    }
+  },
+  {
+    "id": "inv_malformed_iban",
+    "text": "INVOICE number INV-1010. Total: CHF 250.00. IBAN: CH93. Invoice date: 2026-04-04",
+    "doc_type": "invoice",
+    "truth": {
+      "invoice_number": "INV-1010",
+      "total_amount": "250.00",
+      "invoice_date": "2026-04-04"
+    }
   }
 ]

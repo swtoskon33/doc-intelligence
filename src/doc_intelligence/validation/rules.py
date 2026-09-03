@@ -11,19 +11,41 @@ from doc_intelligence.types import ExtractionResult, ValidationError
 _DATE_SHAPE = re.compile(r"^(\d{1,4})[-/.](\d{1,2})[-/.](\d{1,4})$")
 
 
-def _is_real_date(value: str) -> bool:
-    """True if the value is a well-formed date, not merely date-shaped.
+_CURRENCY = re.compile(r"\b(CHF|EUR|USD|GBP)\b|[$\u20ac\u00a3]", re.IGNORECASE)
 
-    Checking the shape alone accepts 9999/99/9999. Both day-first (15.09.2026) and
-    year-first (2026-09-15) orders are common on European invoices, so a value passes if
-    it parses under either reading.
+
+class AmountParseError(ValueError):
+    """Raised when an amount cannot be parsed, so it cannot be skipped silently."""
+
+
+def _is_real_date(value: str) -> bool:
+    """True if the value is a date that actually exists on the calendar.
+
+    Accepts ISO (2026-09-15), Swiss and German (15.09.2026), and slash forms
+    (15/09/2026), including two-digit years common on receipts (15.09.26 -> 2026).
+    Separators must be consistent: 15.09/2026 is a formatting error, not a date.
     """
-    match = _DATE_SHAPE.match(value.strip())
+    text = value.strip()
+    match = re.fullmatch(r"(\d{1,4})([-/.])(\d{1,2})\2(\d{1,4})", text)
     if not match:
         return False
-    a, b, cc = (int(g) for g in match.groups())
-    for year, month, day in ((a, b, cc), (cc, b, a)):
-        if year < 1900 or year > 2200:
+
+    a, _, b, d = match.groups()
+
+    def expand_year(y: str) -> int:
+        n = int(y)
+        # a two-digit year on a business document is this century
+        return 2000 + n if len(y) <= 2 else n
+
+    candidates = []
+    if len(a) == 4:                       # year-first: 2026-09-15
+        candidates.append((int(a), int(b), int(d)))
+    else:                                 # day-first: 15.09.2026 or 15.09.26
+        candidates.append((expand_year(d), int(b), int(a)))
+        candidates.append((expand_year(d), int(a), int(b)))   # tolerate month-first
+
+    for year, month, day in candidates:
+        if not (1900 <= year <= 2200):
             continue
         try:
             date(year, month, day)
@@ -31,10 +53,6 @@ def _is_real_date(value: str) -> bool:
             continue
         return True
     return False
-
-
-class AmountParseError(ValueError):
-    """Raised when an amount cannot be parsed, so the caller cannot skip it silently."""
 
 
 def _to_float(value):
@@ -49,7 +67,9 @@ def _to_float(value):
     if not isinstance(value, str):
         raise AmountParseError(f"amount is not text: {value!r}")
 
-    cleaned = value.strip().replace("'", "").replace(" ", "").replace("\u00a0", "")
+    # a value like "CHF 1081.00" is a number with a currency attached, not a parse failure
+    cleaned = _CURRENCY.sub("", value)
+    cleaned = cleaned.strip().replace("'", "").replace(" ", "").replace("\u00a0", "")
     if not cleaned:
         raise AmountParseError("amount is empty")
 
@@ -67,6 +87,20 @@ def _to_float(value):
         return float(cleaned)
     except ValueError as exc:
         raise AmountParseError(f"cannot parse amount {value!r}") from exc
+
+
+def _iban_problem(iban: str) -> str:
+    """Name the specific IBAN check that failed, so review_reasons stay useful."""
+    s = iban.replace(" ", "").upper()
+    if not (15 <= len(s) <= 34):
+        return f"IBAN length {len(s)} outside the valid range 15-34"
+    if not s[:2].isalpha():
+        return "IBAN does not start with a country code"
+    if not s[2:4].isdigit():
+        return "IBAN check digits are not numeric"
+    if not s.isalnum():
+        return "IBAN contains non-alphanumeric characters"
+    return "IBAN checksum failed"
 
 
 def _iban_valid(iban: str) -> bool:
@@ -103,7 +137,7 @@ def validate(result: ExtractionResult) -> list[ValidationError]:
             errors.append(ValidationError(name, "not a valid date (bad format or invalid calendar date)"))
     iban = result.value("iban")
     if iban is not None and not _iban_valid(iban):
-        errors.append(ValidationError("iban", "IBAN checksum failed"))
+        errors.append(ValidationError("iban", _iban_problem(iban)))
     def amount(name):
         """Parse a numeric field; an unparseable value is a validation error, not a skip."""
         raw = result.value(name)
