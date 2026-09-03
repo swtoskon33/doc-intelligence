@@ -280,7 +280,8 @@ python -m pytest                        # 42 tests (1 skipped without transforme
 
 ```bash
 python3.11 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev]"                    # core + tests
+pip install -e ".[dev,ml,tracking]"        # + PyTorch, LayoutLMv3, MLflow
 python -m pytest
 python scripts/run_eval.py        # regenerate docs/eval_report.md
 uvicorn doc_intelligence.serving.main:app --port 8000

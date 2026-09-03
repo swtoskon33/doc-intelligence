@@ -20,6 +20,20 @@ dev = [
     "httpx>=0.27",
 ]
 
+# Deep-learning stack: LayoutLMv3 fine-tuning and the transformer QA backend. Kept
+# optional so CI stays light -- the rule backend and the whole test suite run without it.
+ml = [
+    "torch>=2.2",
+    "transformers>=4.40",
+    "datasets>=2.18",
+    "seqeval>=1.2",
+]
+
+# Experiment tracking for the training and benchmark scripts.
+tracking = [
+    "mlflow>=2.12",
+]
+
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
