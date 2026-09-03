@@ -1,6 +1,8 @@
 # Extraction backend comparison
 
-Every extraction backend scored on the same golden set (12 documents: clean and noisy invoices with Swiss VAT, receipts, contracts). Regenerate with `python scripts/benchmark_extractors.py`.
+Every extraction backend scored on the same golden set (12 hand-written synthetic documents: clean and noisy invoices with Swiss VAT, receipts, contracts). Regenerate with `python scripts/benchmark_extractors.py`.
+
+These 12 documents are synthetic, written to cover specific cases. They separate the backends and exercise every branch of the pipeline, but are far too few to support a generalisation claim: read the numbers as a comparison under identical conditions, not as accuracy estimates. The LayoutLMv3 results come from FUNSD, a real annotated benchmark of 199 documents.
 
 | Backend | Field accuracy | Valid docs | Flagged for review | Latency / doc (ms) |
 |---------|----------------|------------|--------------------|--------------------|

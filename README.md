@@ -165,7 +165,11 @@ Every diagram below reflects code in this repository.
 
 ## Extraction backends compared
 
-Three backends behind one interface, scored on the same golden set of 12 documents
+Three backends behind one interface, scored on the same golden set of 12 synthetic
+documents (hand-written to cover noisy OCR text, a German invoice, a reduced Swiss VAT
+rate, an invalid IBAN and missing fields). Small and synthetic by design: it separates
+the backends but is not a generalisation claim. The LayoutLMv3 results below come from
+FUNSD, a real annotated benchmark of 199 documents
 (regenerate: `python scripts/benchmark_extractors.py`, full table in
 docs/model_comparison.md):
 

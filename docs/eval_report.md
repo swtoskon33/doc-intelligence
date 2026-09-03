@@ -1,6 +1,6 @@
 # Evaluation report
 
-Golden set: 12 documents (invoices, receipts, contracts), extracted with the offline rule backend and validated. Regenerate with `python scripts/run_eval.py`.
+Golden set: 12 synthetic documents (invoices, receipts, contracts), extracted with the offline rule backend and validated. Regenerate with `python scripts/run_eval.py`.
 
 ## Document-level
 

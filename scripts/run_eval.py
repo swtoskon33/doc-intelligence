@@ -42,7 +42,7 @@ def main() -> None:
     n = len(samples)
 
     intro = (
-        f"Golden set: {n} documents (invoices, receipts, contracts), extracted with "
+        f"Golden set: {n} synthetic documents (invoices, receipts, contracts), extracted with "
         "the offline rule backend and validated. Regenerate with `python "
         "scripts/run_eval.py`."
     )
