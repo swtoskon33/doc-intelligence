@@ -96,7 +96,7 @@ Every diagram below reflects code in this repository.
 
 The fine-tuning runs on FUNSD, whose labels are form semantics (question / answer /
 header), not the invoice fields the rule and LLM backends extract. So the numbers
-below demonstrate that the pipeline -- dataset, preprocessing, training loop,
+demonstrate that the pipeline -- dataset, preprocessing, training loop,
 checkpointing, decoding, serving -- works end to end on a real annotated benchmark.
 They are not an invoice-extraction score, and the two evaluations in this repo are
 deliberately kept separate for that reason.
@@ -181,7 +181,7 @@ script. The obstacle is annotated data, not the implementation.
 Three backends behind one interface, scored on the same golden set of 12 synthetic
 documents (hand-written to cover noisy OCR text, a German invoice, a reduced Swiss VAT
 rate, an invalid IBAN and missing fields). Small and synthetic by design: it separates
-the backends but is not a generalisation claim. The LayoutLMv3 results below come from
+the backends but is not a generalisation claim. The LayoutLMv3 results come from
 FUNSD, a real annotated benchmark of 199 documents
 (regenerate: `python scripts/benchmark_extractors.py`, full table in
 docs/model_comparison.md):
@@ -315,7 +315,7 @@ kubectl apply -f k8s/
 
 | Component  | Offline (default)      | Alternatives                                    |
 |------------|------------------------|-------------------------------------------------|
-| Extraction | RuleExtractor (schema) | `EXTRACTION_BACKEND=hf` or `=llm`               |
+| Extraction | RuleExtractor (schema) | `EXTRACTION_BACKEND=hf`, `=llm` or `=layoutlmv3` |
 | OCR        | direct text            | Azure Document Intelligence                     |
 
 ## Layout
