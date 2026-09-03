@@ -15,6 +15,7 @@ from pathlib import Path
 from doc_intelligence.eval.metrics import evaluate
 from doc_intelligence.extraction.extractor import get_extractor
 from doc_intelligence.ingest.documents import ingest_document
+from doc_intelligence.tracking.mlflow_tracking import track_run
 from doc_intelligence.types import DocumentType
 from doc_intelligence.validation.rules import validate_in_place
 
@@ -69,8 +70,18 @@ def main() -> None:
         out = run_backend(name, docs, truth)
         if out is None:
             skipped.append(name)
-        else:
-            rows.append(out)
+            continue
+        rows.append(out)
+        with track_run("doc-intelligence-extraction", name) as log:
+            log(
+                params={"backend": name, "golden_set_size": n},
+                metrics={
+                    "field_accuracy": out["accuracy"],
+                    "valid_documents": out["valid"],
+                    "review_rate": round(out["review"] / n, 3),
+                    "latency_ms_per_doc": out["latency_ms"],
+                },
+            )
 
     intro = (
         f"Every extraction backend scored on the same golden set ({n} documents: clean "
