@@ -19,88 +19,132 @@ Every diagram below reflects code in this repository.
 
 ### End-to-end document pipeline
 
-```mermaid
-flowchart TD
-    A[PDF / image or text] --> B[OCR backend<br/>local or Azure DI]
-    B --> C[words + bounding boxes]
-    C --> D[normalise boxes to 0-1000]
-    D --> E[LayoutLMv3 processor]
-    E --> F[token classification]
-    F --> G[BIO decoding to entities]
-    G --> H[confidence per entity]
-    H --> I{valid and confident?}
-    I -->|yes| J[structured output]
-    I -->|no| K[human review<br/>with reasons]
 ```
+                    PDF / image
+                         |
+                        OCR
+                         |
+              text + bounding boxes
+                         |
+               LayoutLMv3 processor
+                         |
+              token classification
+                         |
+                    BIO decoding
+                         |
+              confidence estimation
+                         |
+                schema validation
+                         |
+                +--------+--------+
+                |                 |
+          valid, confident    invalid or
+                |             low confidence
+                |                 |
+             output          human review
+```
+
 
 ### Extraction backends
 
-LayoutLMv3 is an additional backend; the existing three are untouched.
-
-```mermaid
-flowchart TD
-    D[Document] --> O[OCR]
-    O --> R{EXTRACTION_BACKEND}
-    R -->|rule| A[regex over YAML schema]
-    R -->|hf| B[transformer QA per field]
-    R -->|llm| C[LLM structured JSON]
-    R -->|layoutlmv3| E[LayoutLMv3 token classification]
-    A --> V[validation + confidence]
-    B --> V
-    C --> V
-    E --> V
-    V --> W{auto-accept or review}
 ```
+                       document
+                          |
+                         OCR
+                          |
+                 EXTRACTION_BACKEND
+                          |
+      +---------+---------+---------+
+      |         |         |         |
+    rules     HF QA      LLM   LayoutLMv3
+   (regex)  (per field) (JSON)  (+ boxes)
+      |         |         |         |
+      +---------+---------+---------+
+                          |
+              validation + confidence
+                          |
+                +---------+---------+
+                |                   |
+          auto-accept          human review
+```
+
 
 ### LayoutLMv3 data flow
 
-```mermaid
-flowchart TD
-    I[page image] --> P[LayoutLMv3 processor<br/>apply_ocr=False]
-    W[words] --> P
-    B[boxes 0-1000] --> P
-    P --> E[LayoutLMv3 encoder]
-    E --> T[token logits]
-    T --> S[softmax to per-word label + score]
-    S --> D[BIO decoding]
-    D --> N[entities: label, text, confidence, span box]
 ```
+   page image        words          boxes
+        |              |              |
+        |              |     normalise to 0-1000
+        |              |              |
+        +--------------+--------------+
+                       |
+            LayoutLMv3 processor (apply_ocr=False)
+                       |
+              LayoutLMv3 encoder
+                       |
+               token classification
+                       |
+         softmax -> per-word label + score
+                       |
+                  BIO decoding
+                       |
+    entities: label, text, confidence, span box
+```
+
 
 ### Training pipeline
 
-```mermaid
-flowchart TD
-    F[FUNSD: 199 annotated documents] --> S[document-level split<br/>119 / 30 / 50]
-    S --> E[encode: processor + word_ids label alignment]
-    E --> T[PyTorch loop: AdamW, weight decay]
-    T --> V[per-epoch validation<br/>seqeval P/R/F1]
-    V --> C{improved?}
-    C -->|yes| K[save checkpoint]
-    C -->|no, twice| X[early stop]
-    K --> R[test evaluation]
-    X --> R
-    R --> M[MLflow: params, metrics]
-    R --> J[docs/layoutlm_training.json]
 ```
+        FUNSD: 199 annotated documents
+                       |
+        document-level split 119 / 30 / 50
+                       |
+     encode: processor + word_ids label alignment
+                       |
+        PyTorch loop (AdamW, weight decay)
+                       |
+        per-epoch validation (seqeval P/R/F1)
+                       |
+             +---------+---------+
+             |                   |
+        improved:            no gain twice:
+      save checkpoint          early stop
+             |                   |
+             +---------+---------+
+                       |
+               test evaluation
+                       |
+          +------------+------------+
+          |                         |
+   MLflow (params,        docs/layoutlm_training.json
+    metrics, history)
+```
+
 
 ### Serving and model lifecycle
 
-Aliases select which backend serves traffic; promotion is an alias flip, not a redeploy.
-
-```mermaid
-flowchart TD
-    C[client] --> A[FastAPI]
-    A -->|POST /extract| AL{alias}
-    AL -->|champion| B1[backend]
-    AL -->|challenger| B2[backend]
-    A -->|POST /extract/layout| L[LayoutLMv3 backend]
-    B1 --> V[validation + review decision]
-    B2 --> V
-    L --> V
-    V --> R[response: fields, confidence, review reasons]
-    A --> P[/metrics: latency, review rate, validation failures/]
-    P --> G[Prometheus + Grafana]
 ```
+                      client
+                        |
+                     FastAPI
+                        |
+        +---------------+---------------+
+        |                               |
+   POST /extract                POST /extract/layout
+        |                               |
+    alias router                 LayoutLMv3 backend
+   (champion /                          |
+    challenger)                         |
+        |                               |
+        +---------------+---------------+
+                        |
+          validation + review decision
+                        |
+     response: fields, confidence, review reasons
+                        |
+        /metrics -> Prometheus -> Grafana
+```
+
 
 ## Features
 
