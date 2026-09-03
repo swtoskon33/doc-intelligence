@@ -178,9 +178,10 @@ script. The obstacle is annotated data, not the implementation.
 
 ## Extraction backends compared
 
-Three backends behind one interface, scored on the same golden set of 15 synthetic
+Three backends behind one interface, scored on the same golden set of 18 synthetic
 documents (hand-written to cover noisy OCR text, a German invoice, a reduced Swiss VAT rate,
-a Swiss-format date, an impossible date, a malformed IBAN and missing fields). Small and synthetic by design: it separates
+Swiss and German number and date formats, a UK IBAN, an impossible date, a
+malformed IBAN and missing fields). Small and synthetic by design: it separates
 the backends but is not a generalisation claim. The LayoutLMv3 results come from
 FUNSD, a real annotated benchmark of 199 documents
 (regenerate: `python scripts/benchmark_extractors.py`, full table in
@@ -188,8 +189,8 @@ docs/model_comparison.md):
 
 | Backend | Field accuracy | Flagged for review | Latency / doc (ms) |
 |---------|----------------|--------------------|---------------|
-| rule (regex, schema-driven) | 0.833 | 12/15 | 0.3 |
-| hf (transformer QA) | 0.542 | 13/15 | 560 |
+| rule (regex, schema-driven) | 0.902 | 15/18 | 0.3 |
+| hf (transformer QA) | 0.541 | 16/18 | 411 |
 | llm (OpenAI / Azure) | not run (needs an API key) | - | - |
 
 On structured documents the regex backend beats a general-purpose transformer on both
