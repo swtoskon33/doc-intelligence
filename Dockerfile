@@ -7,6 +7,10 @@ COPY pyproject.toml ./
 COPY src ./src
 RUN pip install --no-cache-dir -e .
 
+# run as an unprivileged user rather than root
+RUN useradd --create-home --uid 10001 app && chown -R app:app /app
+USER app
+
 EXPOSE 8000
 
 # Production ASGI server; module-level app so no factory args needed

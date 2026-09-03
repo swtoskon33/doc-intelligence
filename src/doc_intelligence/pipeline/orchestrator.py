@@ -49,12 +49,6 @@ class ProcessedDocument:
     reasons: list[str]
 
 
-def select_backend(doc_type: DocumentType, primary: Extractor,
-                   fallback: Extractor | None) -> Extractor:
-    """Backend policy: start with the primary; the fallback is used on escalation."""
-    return primary
-
-
 class DocumentPipeline:
     """Splits a batch, processes each document, and decides accept vs review."""
 
@@ -84,7 +78,7 @@ class DocumentPipeline:
                      doc_type: DocumentType) -> ProcessedDocument:
         doc = ingest_document(doc_id, text)
         doc.doc_type = doc_type
-        extractor = select_backend(doc_type, self.primary, self.fallback)
+        extractor = self.primary
         result = validate_in_place(extractor.extract(doc))
 
         # escalate to the fallback backend when the cheap one produced a weak result

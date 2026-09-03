@@ -24,6 +24,9 @@ from doc_intelligence.ocr.backends import decode_image_payload, get_ocr
 from doc_intelligence.serving.registry import AliasRegistry
 from doc_intelligence.validation.rules import validate_in_place
 
+# a 512Mi container should not be asked to decode an arbitrarily large payload
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
+
 
 class ExtractRequest(BaseModel):
     """Submit either raw text or a base64-encoded scan (routed through OCR)."""
@@ -141,6 +144,8 @@ def create_app(extractor: Extractor | None = None) -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         if req.image_base64:
+            if len(req.image_base64) > MAX_IMAGE_BYTES:
+                raise HTTPException(status_code=413, detail="image payload too large")
             text = ocr.to_text(decode_image_payload(req.image_base64))
         else:
             text = req.text or ""

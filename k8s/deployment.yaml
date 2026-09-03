@@ -17,13 +17,29 @@ spec:
       containers:
         - name: doc-intelligence
           image: doc-intelligence:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 8000
           env:
             - name: CHAMPION_BACKEND
               value: "rule"
+            # the challenger needs a key; without the secret the alias reports
+            # unavailable rather than failing at request time
             - name: CHALLENGER_BACKEND
               value: "llm"
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: doc-intelligence-secrets
+                  key: openai-api-key
+                  optional: true
             - name: OCR_BACKEND
               value: "local"
           resources:
