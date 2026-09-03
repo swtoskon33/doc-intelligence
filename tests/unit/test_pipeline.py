@@ -1,8 +1,8 @@
 """Tests for the pipeline orchestrator, vendor memory, and trained classifier."""
 import pytest
-from doc_intelligence.models.classifier import DocumentClassifier
 
 from doc_intelligence.memory.vendor import VendorMemory
+from doc_intelligence.models.classifier import DocumentClassifier
 from doc_intelligence.pipeline.orchestrator import Decision, DocumentPipeline
 from doc_intelligence.types import DocumentType
 
