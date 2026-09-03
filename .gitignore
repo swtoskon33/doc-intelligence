@@ -7,5 +7,5 @@ __pycache__/
 htmlcov/
 data/*.db
 mlruns/
-models/
+/models/
 data/vendor_memory.json
