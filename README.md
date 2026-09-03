@@ -36,11 +36,11 @@ Three backends behind one interface, scored on the same golden set of 12 documen
 (regenerate: `python scripts/benchmark_extractors.py`, full table in
 docs/model_comparison.md):
 
-| Backend | Field accuracy | Flagged for review | Latency / doc |
+| Backend | Field accuracy | Flagged for review | Latency / doc (ms) |
 |---------|----------------|--------------------|---------------|
-| rule (regex, schema-driven) | 0.829 | 9/12 | 0.4 ms |
-| hf (transformer QA) | 0.561 | 10/12 | 500 ms |
-| llm (OpenAI / Azure) | needs an API key | - | - |
+| rule (regex, schema-driven) | 0.829 | 9/12 | 0.4 |
+| hf (transformer QA) | 0.561 | 10/12 | 1983 |
+| llm (OpenAI / Azure) | not run (needs an API key) | - | - |
 
 On structured documents the regex backend beats a general-purpose transformer on both
 accuracy and latency. The SQuAD-trained QA model is tuned for prose, not forms: it has no
@@ -133,6 +133,16 @@ curl -X POST localhost:8000/extract \
 Returns the extracted fields with confidence, `is_valid`, `needs_review`, and
 `review_reasons`.
 
+## Running the evaluations
+
+```
+python scripts/build_golden.py          # regenerate the golden set
+python scripts/run_eval.py              # per-field metrics -> docs/eval_report.md
+python scripts/benchmark_extractors.py  # backend comparison -> docs/model_comparison.md
+python scripts/train_classifier.py      # train the baseline classifier + compare
+python -m pytest                        # 42 tests (1 skipped without transformers)
+```
+
 ## Quickstart
 
 ```bash
@@ -176,7 +186,7 @@ src/doc_intelligence/
   tracking/        MLflow experiment tracking
   serving/         FastAPI app, alias registry, ASGI entrypoint
 
-tests/             unit + integration (43 tests)
+tests/             unit + integration (42 tests)
 k8s/               deployment, service, HPA
 monitoring/        grafana_dashboard.json
 scripts/           build_golden.py, run_eval.py, benchmark_extractors.py,
