@@ -9,6 +9,7 @@ dependencies = [
     "pydantic>=2.6",
     "pyyaml>=6.0",
     "prometheus-client>=0.20",
+    "scikit-learn>=1.4",
 ]
 
 [project.optional-dependencies]

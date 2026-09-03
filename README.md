@@ -79,6 +79,41 @@ through Azure Document Intelligence (prebuilt-read) when credentials are present
 golden-set size as params, field accuracy, valid documents, review rate and latency as
 metrics. Tracking no-ops when MLflow is absent, so the benchmark still runs offline.
 
+## End-to-end pipeline
+
+`DocumentPipeline` runs the whole flow a back office needs and ends with a decision,
+not just fields:
+
+```
+batch -> split -> classify -> select backend -> extract -> validate -> decide
+                                                                        |
+                                            auto_accept  <-------------- +
+                                            needs_review (with reasons)
+```
+
+Backend selection is policy: the cheap deterministic backend runs first, and a fallback
+is only used when the first result would land in review anyway.
+
+### Vendor memory
+
+Invoices from the same sender repeat their IBAN, VAT rate and currency. When a document
+omits one, the pipeline recalls it from the last accepted document of that vendor and
+marks it at lower confidence, since it was remembered rather than read. Accepted
+documents feed back into the store. This is small-scale retrieval that reduces missing
+fields; it is not a language model.
+
+### Trained classifier
+
+`scripts/train_classifier.py` fits a TF-IDF + logistic-regression classifier on the
+labelled golden set and reports it against the keyword heuristic:
+
+| Classifier | Accuracy |
+|------------|----------|
+| trained (TF-IDF + logistic regression) | 1.000 |
+| keyword heuristic | 0.917 |
+
+Small numbers on a small set, but the comparison is measured rather than assumed.
+
 ## How it maps to IDP
 
 Classification, splitting, extraction, validation, and review are the core stages of a
@@ -134,14 +169,18 @@ src/doc_intelligence/
   validation/      business rules (required fields, dates, IBAN, MWST)
   eval/            per-field precision / recall / F1
   ocr/             OCR backends (local, Azure Document Intelligence)
+  pipeline/        end-to-end orchestrator with accept/review decisions
+  memory/          vendor memory for recalling stable fields
+  models/          trained baseline document classifier
   monitoring/      Prometheus metrics
   tracking/        MLflow experiment tracking
   serving/         FastAPI app, alias registry, ASGI entrypoint
 
-tests/             unit + integration (38 tests)
+tests/             unit + integration (43 tests)
 k8s/               deployment, service, HPA
 monitoring/        grafana_dashboard.json
-scripts/           build_golden.py, run_eval.py, benchmark_extractors.py, serve.py
+scripts/           build_golden.py, run_eval.py, benchmark_extractors.py,
+                   train_classifier.py, serve.py
 docs/              eval_report.md, model_comparison.md
 ```
 
