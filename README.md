@@ -298,6 +298,29 @@ That is the boundary the LayoutLMv3 backend exists to cross, and the reason both
 are here: rules for clean structured input where the format is stable and the cost is
 microseconds, a layout-aware model for anything off a scanner.
 
+## Real invoices
+
+Everything else here is measured on documents written alongside the extraction patterns,
+which cannot reveal a pattern that fails on input nobody tailored for it. This uses 26
+real invoices from `katanaml-org/invoices-donut-data-v1`, annotated independently of this
+repository (`python scripts/eval_real_invoices.py`, details in docs/real_invoice_eval.md):
+
+| Field | Accuracy |
+|-------|----------|
+| invoice_number | 1.00 |
+| invoice_date | 1.00 |
+| iban | 1.00 |
+| vendor | 0.96 |
+| **overall** | **0.99** |
+
+It earned its place immediately: vendor started at 0.62 because every company name with a
+hyphen (Bradley-Andrade, Nichols-Barajas) failed to match at all. The synthetic set had no
+hyphenated names in it, so nothing had ever caught that.
+
+The dataset ships images without OCR text, so the document text is reconstructed from the
+annotated fields. This therefore tests the patterns against real invoice values and
+phrasing, not against scanner noise; that side is covered in docs/real_document_probe.md.
+
 ## How it maps to IDP
 
 Classification, splitting, extraction, validation and review are the stages of a

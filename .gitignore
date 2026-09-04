@@ -10,3 +10,4 @@ mlruns/
 data/vendor_memory.json
 models/
 mlflow.db
+data/real/

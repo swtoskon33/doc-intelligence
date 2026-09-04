@@ -4,7 +4,8 @@ fields:
     pattern: (?:invoice|rechnung)\s*(?:number|no\.?|nr\.?|nummer|#)?\s*[:#]?\s*([A-Z0-9][A-Z0-9\-/]*)
     required: true
   vendor:
-    pattern: (?:from|vendor|bill from|lieferant)\s*[:]?\s*([A-Za-z][A-Za-z0-9&' ]*[A-Za-z0-9])(?=\s*[.,;\n]|\s*$)
+    pattern: (?:from|vendor|bill from|lieferant)\s*[:]?\s*([A-Za-z][A-Za-z0-9&'\-.
+      ]*[A-Za-z0-9])(?=\s*[,;\n]|\s*\.\s|\s*$)
     required: false
   iban:
     pattern: (?:iban)\s*[:]?\s*([A-Z]{2}[0-9]{2}[A-Z0-9 ]{11,30})
