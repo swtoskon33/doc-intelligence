@@ -282,12 +282,15 @@ which cannot show the failure that matters. Run over 50 genuinely scanned FUNSD 
 |---------|--------|
 | Documents processed | 50 |
 | Crashes | 0 |
-| Document type recognised | 15/50 |
+| Document type recognised | 15/50 (the rest are memos and forms) |
 | Field values extracted | 9 |
 
-Nothing crashes and almost nothing is extracted. Part of that is fair, since FUNSD is
-forms rather than invoices, but the pages it does read as invoices give up barely
-anything. The patterns expect `Total: CHF 1081.00` on one line; a scan gives a label in
+Nothing crashes and almost nothing is extracted. Most of the unrecognised pages are a
+correct abstention rather than a miss: they are internal memos and fax covers, sales
+reports and requisition forms from a corporate archive, none of which is an invoice, a
+receipt or a contract. Placing them in one of those three would be inventing a type.
+
+What does matter is the pages it *does* read as invoices, which give up barely anything. The patterns expect `Total: CHF 1081.00` on one line; a scan gives a label in
 one cell, its value in another, and characters the OCR guessed at. A regex matches a
 string, it has no notion that the number beside the word Total is the total.
 

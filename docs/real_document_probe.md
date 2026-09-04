@@ -20,7 +20,11 @@ Fields found, by name:
 | total_amount | 1 |
 | invoice_number | 1 |
 
-Nothing crashes, and almost nothing is extracted: 9 field values across 50 documents, with 35 pages whose type the classifier cannot place. Part of that is fair -- these are forms, and a form has no invoice number. But the pages it *does* read as invoices give up barely anything, and that is the real result.
+Nothing crashes, and almost nothing is extracted: 9 field values across 50 documents, with 35 pages whose type the classifier cannot place. Most of that is correct behaviour, not failure. Inspecting the unrecognised pages shows
+what they are: internal memos and fax covers (TO / FROM / SUBJECT / DIVISION), sales
+distribution reports, requisition forms. FUNSD comes from a corporate document archive,
+and none of these is an invoice, a receipt or a contract. A classifier that placed them
+in one of those three would be inventing a type, which is worse than abstaining. But the pages it *does* read as invoices give up barely anything, and that is the real result.
 
 The patterns expect `Total: CHF 1081.00` on one line. A scan gives a label in one cell and its value in another, spacing that survives no regex, and characters the OCR guessed at. A regex matches a string; it has no notion that the number to the right of the word Total is the total. That is exactly the boundary the LayoutLMv3 backend exists to cross: it reads position as well as text, so a value means something because of where it sits relative to its label.
 
