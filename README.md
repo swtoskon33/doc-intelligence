@@ -311,15 +311,35 @@ repository (`python scripts/eval_real_invoices.py`, details in docs/real_invoice
 | invoice_date | 1.00 |
 | iban | 1.00 |
 | vendor | 0.96 |
-| **overall** | **0.99** |
+| **overall** | **0.99*** |
 
-It earned its place immediately: vendor started at 0.62 because every company name with a
+*Reconstructed text: the dataset ships images without OCR output, so document text is rebuilt from the annotations. Real invoice values and phrasing, synthetic layout. Straight-through processing on this set is 0/26, because the schema requires a total amount and the dataset annotates only the header.\n\nIt earned its place immediately: vendor started at 0.62 because every company name with a
 hyphen (Bradley-Andrade, Nichols-Barajas) failed to match at all. The synthetic set had no
 hyphenated names in it, so nothing had ever caught that.
 
 The dataset ships images without OCR text, so the document text is reconstructed from the
 annotated fields. This therefore tests the patterns against real invoice values and
 phrasing, not against scanner noise; that side is covered in docs/real_document_probe.md.
+
+## Rule versus layout on real scans
+
+Both backends over the same 50 real scanned FUNSD pages
+(`python scripts/compare_backends_on_scans.py`, details in
+docs/backend_comparison_on_scans.md):
+
+| Backend | Values extracted | Latency / page |
+|---------|------------------|----------------|
+| rule (regex over flat text) | 7 | 0.17 ms |
+| LayoutLMv3 (words + boxes) | 1919 (1617 confident) | 514 ms |
+
+274x the reach at 3000x the cost. The regex patterns need a label and its value adjacent
+in a line of text; a scan puts them in separate cells, and no pattern tuning recovers a
+spatial relationship from a flattened string. This is not an accuracy comparison, since
+FUNSD has no invoice fields to score either backend against, but it settles the question
+of which one can read a scan at all.
+
+The cost is why both ship: rules for clean structured input where the format is stable,
+the layout model for anything off a scanner.
 
 ## How it maps to IDP
 
