@@ -272,6 +272,29 @@ AGREEMENT) are a strong signal in this domain. The trained model would need an o
 of magnitude more documents before it earned its place; until then the cheap
 classifier is the right default. Full numbers in docs/classifier_report.json.
 
+## The rule backend on real scans
+
+Every benchmark above uses synthetic documents written alongside the extraction patterns,
+which cannot show the failure that matters. Run over 50 genuinely scanned FUNSD pages
+(`python scripts/probe_real_documents.py`, details in docs/real_document_probe.md):
+
+| Measure | Result |
+|---------|--------|
+| Documents processed | 50 |
+| Crashes | 0 |
+| Document type recognised | 15/50 |
+| Field values extracted | 9 |
+
+Nothing crashes and almost nothing is extracted. Part of that is fair, since FUNSD is
+forms rather than invoices, but the pages it does read as invoices give up barely
+anything. The patterns expect `Total: CHF 1081.00` on one line; a scan gives a label in
+one cell, its value in another, and characters the OCR guessed at. A regex matches a
+string, it has no notion that the number beside the word Total is the total.
+
+That is the boundary the LayoutLMv3 backend exists to cross, and the reason both paths
+are here: rules for clean structured input where the format is stable and the cost is
+microseconds, a layout-aware model for anything off a scanner.
+
 ## How it maps to IDP
 
 Classification, splitting, extraction, validation and review are the stages of a
